@@ -17,28 +17,28 @@ public class GameSpawner : MonoBehaviourPunCallbacks
 
     private void Start()
     {
-        SpawnPlayer();
+        int team = (PhotonNetwork.CurrentRoom.PlayerCount % 2 == 1) ? 1 : 2;
+
+        ExitGames.Client.Photon.Hashtable props = new ExitGames.Client.Photon.Hashtable();
+        props["team"] = team;
+
+        PhotonNetwork.LocalPlayer.SetCustomProperties(props);
+
+        SpawnPlayer(team);
     }
 
-    void SpawnPlayer()
+    void SpawnPlayer(int team)
     {
-        int actorNumber = PhotonNetwork.LocalPlayer.ActorNumber;
-        string prefabToSpawn = "Player";
-
-        switch (actorNumber)
-        {
-            case 1: prefabToSpawn = "Player"; break;
-            case 2: prefabToSpawn = "Player 2"; break;
-            case 3: prefabToSpawn = "Player 3"; break;
-            case 4: prefabToSpawn = "Player 4"; break;
-        }
-
         int spawnIndex = PhotonNetwork.LocalPlayer.ActorNumber - 1;
         if (spawnIndex >= 0 && spawnIndex < playerSpawns.Length)
         {
             GameObject playerSpawn = playerSpawns[spawnIndex];
-            GameObject player = PhotonNetwork.Instantiate(prefabToSpawn, playerSpawn.transform.position, Quaternion.identity);
+
+            GameObject player = PhotonNetwork.Instantiate("Player", playerSpawn.transform.position, Quaternion.identity);
             spawnedPlayers.Add(player);
+
+            PhotonView pv = player.GetComponent<PhotonView>();
+            pv.RPC("SetColorRPC", RpcTarget.AllBuffered, team);
         }
     }
 

@@ -12,9 +12,6 @@ public class CreateAndJoin : MonoBehaviourPunCallbacks
     [SerializeField] GameObject errorPanel;
     [SerializeField] TMP_Text errorMessageText;
 
-    //ExitGames.Client.Photon.Hashtable customProperties = new ExitGames.Client.Photon.Hashtable();
-    //private const string currentLevel = "level";
-
     public void CreateRoom()
     {
         string roomName = input_Create.text.Trim();

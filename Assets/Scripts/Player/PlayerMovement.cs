@@ -7,19 +7,15 @@ public class PlayerMovement : MonoBehaviourPunCallbacks
     [Header("Movement")]
     [SerializeField] float moveSpeed = 5f;
 
-    private void Update()
+    void Update()
     {
-        if (!photonView.IsMine)
-            return;
+        if (!photonView.IsMine) return;
 
-        if (Input.GetKeyDown(KeyCode.W))
-        {
-            transform.Translate(0, 1 * moveSpeed, 0);
-        }
-        if (Input.GetKeyDown(KeyCode.S))
-        {
-            transform.Translate(0, -1 * moveSpeed, 0);
+        float input = 0f;
+        if (Input.GetKey(KeyCode.W)) input = 1f;
+        if (Input.GetKey(KeyCode.S)) input = -1f;
 
-        }
+        Vector3 move = new Vector3(0, input, 0) * moveSpeed * Time.deltaTime;
+        transform.Translate(move);
     }
 }
