@@ -9,6 +9,7 @@ public class GameSpawner : MonoBehaviourPunCallbacks
     [SerializeField] GameObject[] playerSpawns;
 
     private List<GameObject> spawnedPlayers = new List<GameObject>();
+    private List<Color> usedColors = new List<Color>();
 
     private void Awake()
     {
@@ -37,10 +38,49 @@ public class GameSpawner : MonoBehaviourPunCallbacks
             GameObject player = PhotonNetwork.Instantiate("Player", playerSpawn.transform.position, Quaternion.identity);
             spawnedPlayers.Add(player);
 
-            PhotonView pv = player.GetComponent<PhotonView>();
-            pv.RPC("SetColorRPC", RpcTarget.AllBuffered, team);
+            AssignPlayerColor(player);
         }
     }
+    void AssignPlayerColor(GameObject player)
+    {
+        PhotonView pv = player.GetComponent<PhotonView>();
+        Color playerColor = GetPlayerColor();
+
+        if (IsColorAvailable(playerColor))
+        {
+            usedColors.Add(playerColor);
+            pv.RPC("SetColorRPC", RpcTarget.AllBuffered, playerColor.r, playerColor.g, playerColor.b);
+        }
+    }
+
+    Color GetPlayerColor()
+    {
+        if (PhotonNetwork.LocalPlayer.CustomProperties.ContainsKey("playerColor"))
+        {
+            Vector3 colorVector = (Vector3)PhotonNetwork.LocalPlayer.CustomProperties["playerColor"];
+            return new Color(colorVector.x, colorVector.y, colorVector.z);
+        }
+
+        return Color.white;
+    }
+
+    bool IsColorAvailable(Color color)
+    {
+        foreach (Color usedColor in usedColors)
+        {
+            if (ColorSimilar(usedColor, color, 0.1f))
+                return false;
+        }
+        return true;
+    }
+
+    bool ColorSimilar(Color a, Color b, float tolerance)
+    {
+        return Mathf.Abs(a.r - b.r) < tolerance &&
+               Mathf.Abs(a.g - b.g) < tolerance &&
+               Mathf.Abs(a.b - b.b) < tolerance;
+    }
+
 
     public override void OnLeftRoom()
     {
@@ -57,5 +97,4 @@ public class GameSpawner : MonoBehaviourPunCallbacks
 
         spawnedPlayers.Clear();
     }
-
 }

@@ -7,6 +7,7 @@ public class CreateAndJoin : MonoBehaviourPunCallbacks
 {
     [SerializeField] TMP_InputField input_Create;
     [SerializeField] TMP_InputField input_Join;
+    [SerializeField] ColorSelector colorSelector;
 
     [Header("Error UI")]
     [SerializeField] GameObject errorPanel;
@@ -14,6 +15,12 @@ public class CreateAndJoin : MonoBehaviourPunCallbacks
 
     public void CreateRoom()
     {
+        if (!colorSelector.IsColorConfirmed())
+        {
+            ShowError("Please select a color first.");
+            return;
+        }
+
         string roomName = input_Create.text.Trim();
 
         if (string.IsNullOrEmpty(roomName))
@@ -35,6 +42,11 @@ public class CreateAndJoin : MonoBehaviourPunCallbacks
 
     public void JoinRoom()
     {
+        if (!colorSelector.IsColorConfirmed())
+        {
+            ShowError("Please select a color first.");
+            return;
+        }
         string roomName = input_Join.text.Trim();
 
         if (string.IsNullOrEmpty(roomName))
@@ -47,6 +59,11 @@ public class CreateAndJoin : MonoBehaviourPunCallbacks
 
     public void JoinRoomInList(string RoomName)
     {
+        if (!colorSelector.IsColorConfirmed())
+        {
+            ShowError("Please select a color first.");
+            return;
+        }
         PhotonNetwork.JoinRoom(RoomName);
     }
 

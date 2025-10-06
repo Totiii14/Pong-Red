@@ -4,10 +4,13 @@ using UnityEngine;
 public class PlayerColor : MonoBehaviourPun
 {
     [PunRPC]
-    public void SetColorRPC(int team)
+    public void SetColorRPC(float r, float g, float b)
     {
-        Renderer rend = GetComponent<Renderer>(); 
+        Renderer rend = GetComponent<Renderer>();
         if (rend != null)
-            rend.material.color = (team == 1) ? Color.white : Color.black;
+        {
+            Color playerColor = new Color(r, g, b);
+            rend.material.color = playerColor;
+        }
     }
 }
