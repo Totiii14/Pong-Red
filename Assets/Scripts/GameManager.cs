@@ -4,6 +4,7 @@ using UnityEngine.UI;
 using TMPro;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEngine.SceneManagement;
 
 public class GameManager : MonoBehaviourPunCallbacks
 {
@@ -16,12 +17,25 @@ public class GameManager : MonoBehaviourPunCallbacks
     [SerializeField] TMP_Text playerCountText;
     [SerializeField] Button readyButton;
 
+    [Header("End Game UI")]
+    [SerializeField] GameObject endGamePanel;
+    [SerializeField] TMP_Text winnerText;
+    [SerializeField] Button restartButton;
+    [SerializeField] Button menuButton;
+
+    [Header("Disconnection UI")]
+    [SerializeField] GameObject disconnectionPanel;
+    [SerializeField] TMP_Text disconnectionText;
+    [SerializeField] Button leaveButton;
+
     [Header("Game State")]
     [SerializeField] GameObject ballPrefab;
 
     int scoreTeam1 = 0;
     int scoreTeam2 = 0;
     private bool gameStarted = false;
+    private bool gameEnded = false;
+    private bool gamePaused = false;
     private Dictionary<int, bool> playersReady = new Dictionary<int, bool>();
     private GameObject ball;
 
@@ -49,17 +63,178 @@ public class GameManager : MonoBehaviourPunCallbacks
 
         scoreText.text = $"{scoreTeam1} - {scoreTeam2}";
 
-        if (scoreTeam1 >= 5 || scoreTeam2 >= 5)
+        if (scoreTeam1 >= 8 || scoreTeam2 >= 8)
         {
             EndGame(team);
         }
-
     }
 
     void EndGame(int winnerTeam)
     {
-        Debug.Log("Gano el equipo " + winnerTeam);
+        gameEnded = true;
+        DisableAllPlayersMovement();
+
+        if (ball != null)
+        {
+            BallMovement ballMovement = ball.GetComponent<BallMovement>();
+            if (ballMovement != null)
+            {
+                ballMovement.PauseBall();
+            }
+        }
+
+        ShowEndGamePanel(winnerTeam);
         PhotonNetwork.CurrentRoom.IsOpen = false;
+    }
+
+    void ShowEndGamePanel(int winnerTeam)
+    {
+        if (endGamePanel != null)
+        {
+            endGamePanel.SetActive(true);
+
+            if (winnerText != null)
+            {
+                string teamColor = (winnerTeam == 1) ? "<color=#00FF00>VERDE</color>" : "<color=#0000FF>AZUL</color>";
+                winnerText.text = $"¡EQUIPO {teamColor} GANA!";
+            }
+
+            if (restartButton != null)
+            {
+                restartButton.gameObject.SetActive(PhotonNetwork.IsMasterClient);
+            }
+        }
+    }
+
+    public void RestartGame()
+    {
+        if (!PhotonNetwork.IsMasterClient) return;
+        photonView.RPC("RestartGameRPC", RpcTarget.All);
+    }
+
+    [PunRPC]
+    void RestartGameRPC()
+    {
+        scoreTeam1 = 0;
+        scoreTeam2 = 0;
+        gameStarted = false;
+        gameEnded = false;
+        gamePaused = false;
+
+        scoreText.text = "0 - 0";
+
+        if (endGamePanel != null) endGamePanel.SetActive(false);
+        if (disconnectionPanel != null) disconnectionPanel.SetActive(false);
+
+        if (readyPanel != null) readyPanel.SetActive(true);
+
+        playersReady.Clear();
+        UpdateReadyUI();
+
+        if (ball != null && PhotonNetwork.IsMasterClient)
+        {
+            PhotonNetwork.Destroy(ball);
+            ball = null;
+        }
+
+        DisableAllPlayersMovement();
+        ResetPlayersPosition();
+    }
+
+    public void ReturnToMenu()
+    {
+        PhotonNetwork.LeaveRoom();
+    }
+
+    void ResetPlayersPosition()
+    {
+        PlayerMovement[] allPlayers = FindObjectsOfType<PlayerMovement>();
+        foreach (PlayerMovement player in allPlayers)
+        {
+            player.transform.position = GetSpawnPosition(player.photonView.OwnerActorNr);
+        }
+    }
+
+    Vector3 GetSpawnPosition(int actorNumber)
+    {
+        int team = (actorNumber % 2 == 1) ? 1 : 2;
+        float xPos = (team == 1) ? -7f : 7f;
+        return new Vector3(xPos, 0, 0);
+    }
+
+    void DisableAllPlayersMovement()
+    {
+        PlayerMovement[] allPlayers = FindObjectsOfType<PlayerMovement>();
+        foreach (PlayerMovement player in allPlayers)
+        {
+            player.DisableMovement();
+        }
+    }
+
+    void ShowDisconnectionPanel()
+    {
+        if (disconnectionPanel != null)
+        {
+            disconnectionPanel.SetActive(true);
+            gamePaused = true;
+
+            if (disconnectionText != null)
+            {
+                disconnectionText.text = "JUGADOR DESCONECTADO";
+            }
+        }
+    }
+
+    void HideDisconnectionPanel()
+    {
+        if (disconnectionPanel != null)
+        {
+            disconnectionPanel.SetActive(false);
+            gamePaused = false;
+
+            if (GetTeamPlayerCount(1) >= 1 && GetTeamPlayerCount(2) >= 1)
+            {
+                ResumeGame();
+            }
+        }
+    }
+
+    void ResumeGame()
+    {
+        if (!gamePaused) return;
+
+        EnableAllPlayersMovement();
+
+        if (ball != null)
+        {
+            BallMovement ballMovement = ball.GetComponent<BallMovement>();
+            if (ballMovement != null)
+            {
+                ballMovement.ResumeBall();
+
+                if (!ballMovement.IsMoving())
+                {
+                    ballMovement.StartBall();
+                }
+            }
+        }
+
+        gamePaused = false;
+        Debug.Log("Juego reanudado");
+    }
+
+    void CheckGameContinuation()
+    {
+        int team1Count = GetTeamPlayerCount(1);
+        int team2Count = GetTeamPlayerCount(2);
+
+        if (team1Count == 0 || team2Count == 0)
+        {
+            if (disconnectionPanel != null && disconnectionText != null)
+            {
+                disconnectionText.text = "PARTIDA TERMINADA\nUn equipo se quedó sin jugadores";
+            }
+        }
     }
 
     public void ToggleReady()
@@ -154,7 +329,6 @@ public class GameManager : MonoBehaviourPunCallbacks
         readyPanel.SetActive(false);
 
         PhotonNetwork.CurrentRoom.IsOpen = false;
-
         EnableAllPlayersMovement();
 
         if (PhotonNetwork.IsMasterClient)
@@ -187,16 +361,21 @@ public class GameManager : MonoBehaviourPunCallbacks
 
     public override void OnPlayerEnteredRoom(Photon.Realtime.Player newPlayer)
     {
-        if (!gameStarted)
+        if (!gameStarted && !gameEnded)
         {
             UpdatePlayerCount();
             photonView.RPC("SetPlayerReady", RpcTarget.All, newPlayer.ActorNumber, false);
+
+            if (gamePaused && GetTeamPlayerCount(1) >= 1 && GetTeamPlayerCount(2) >= 1)
+            {
+                HideDisconnectionPanel();
+            }
         }
     }
 
     public override void OnPlayerLeftRoom(Photon.Realtime.Player otherPlayer)
     {
-        if (!gameStarted)
+        if (!gameStarted && !gameEnded)
         {
             if (playersReady.ContainsKey(otherPlayer.ActorNumber))
             {
@@ -205,7 +384,7 @@ public class GameManager : MonoBehaviourPunCallbacks
             UpdatePlayerCount();
             UpdateReadyUI();
         }
-        else
+        else if (gameStarted && !gameEnded)
         {
             PauseGame();
         }
@@ -213,22 +392,25 @@ public class GameManager : MonoBehaviourPunCallbacks
 
     void PauseGame()
     {
-        PlayerMovement[] allPlayers = FindObjectsOfType<PlayerMovement>();
-        foreach (PlayerMovement player in allPlayers)
-        {
-            player.DisableMovement();
-        }
+        if (gamePaused || gameEnded) return;
+
+        DisableAllPlayersMovement();
 
         if (ball != null)
         {
             BallMovement ballMovement = ball.GetComponent<BallMovement>();
             if (ballMovement != null)
             {
-                ballMovement.PauseBall(); 
+                ballMovement.PauseBall();
             }
         }
 
-        // Mostrar UI de pausa por desconexión
-        // (puedes implementar esto después)
+        ShowDisconnectionPanel();
+        CheckGameContinuation();
+    }
+
+    public override void OnLeftRoom()
+    {
+        SceneManager.LoadScene("Pre-Lobby");
     }
 }

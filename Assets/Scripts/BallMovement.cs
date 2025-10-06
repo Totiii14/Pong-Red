@@ -131,4 +131,9 @@ public class BallMovement : MonoBehaviourPunCallbacks
         isMoving = false;
         rb.velocity = Vector2.zero;
     }
+
+    public bool IsMoving()
+    {
+        return isMoving;
+    }
 }
