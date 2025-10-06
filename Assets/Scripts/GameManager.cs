@@ -63,7 +63,7 @@ public class GameManager : MonoBehaviourPunCallbacks
 
         scoreText.text = $"{scoreTeam1} - {scoreTeam2}";
 
-        if (scoreTeam1 >= 8 || scoreTeam2 >= 8)
+        if (scoreTeam1 >= 5 || scoreTeam2 >= 5)
         {
             EndGame(team);
         }
@@ -95,7 +95,7 @@ public class GameManager : MonoBehaviourPunCallbacks
 
             if (winnerText != null)
             {
-                string teamColor = (winnerTeam == 1) ? "<color=#00FF00>VERDE</color>" : "<color=#0000FF>AZUL</color>";
+                string teamColor = (winnerTeam == 1) ? "<color=#00FF00>1</color>" : "<color=#0000FF>2</color>";
                 winnerText.text = $"¡EQUIPO {teamColor} GANA!";
             }
 
